@@ -201,9 +201,11 @@ def upload_csv():
 
     
 
-        return jsonify({'message': 'Data Fetched Succefully', "dates":dates,
+        response= jsonify({'message': 'Data Fetched Succefully', "dates":dates,
             "predicted_demand":pred
             })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     except Exception as e:
         print(e)
         return make_response(str(e)+'sent proper CSV data', 404) 
