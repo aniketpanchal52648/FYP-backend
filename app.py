@@ -209,5 +209,5 @@ def upload_csv():
         return make_response(str(e)+'sent proper CSV data', 404) 
 
 
-if __name__=="__main__":
-    app.run(debug=True)    
+# if __name__=="__main__":
+#     app.run(debug=True)    
