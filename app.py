@@ -24,7 +24,7 @@ from tensorflow import keras
 
 # from tensorflow.keras import layers
 from sklearn.preprocessing import MinMaxScaler
-scaler = MinMaxScaler()
+# scaler = MinMaxScaler()
 import joblib
 pd.options.mode.chained_assignment = None
 # scaler = scaler.fit(df_for_training)
@@ -39,6 +39,20 @@ def load_model():
     
         print(model.summary()) 
         return model
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return jsonify({'Error':e})
+
+def load_model_MT():
+    try:
+    
+        custom_objects = {'mse': keras.losses.MeanSquaredError()}
+        model_MT = keras.models.load_model('medium_term_LF.h5',custom_objects=custom_objects)
+        
+        
+    
+        print(model_MT.summary()) 
+        return model_MT
     except Exception as e:
         print(f"Error loading model: {e}")
         return jsonify({'Error':e})
@@ -148,6 +162,67 @@ def predicted_short_term(data,model):
 
 
 
+def predicted_medium_term(data,model):
+    scaler=joblib.load('scaler_MT.joblib')
+    # data= pd.read_csv('test_load_forecast.csv')
+    predicted_y=[]
+    dates=[]
+    previousData=[]
+    time=[]
+    for i in range(24):
+        df_test1=data.iloc[i:i+48]
+        df_test1['datetime']=pd.to_datetime(df_test1['datetime'],format='%d-%m-%Y')
+
+        df_test1['week_day']=df_test1['datetime'].dt.dayofweek
+        df_test1['date']=df_test1['datetime'].dt.day
+        df_test1['month']=df_test1['datetime'].dt.month
+        # df_test1['hour']=df_test1['datetime'].dt.hour
+        # df.head()
+        date=data.iloc[i+48,0]
+        date=pd.to_datetime(date,format='%d-%m-%Y')
+        # time.append(date.dt.time)
+
+
+        previousData.append(data.iloc[i+48,1])
+        df_test2 = (df_test1)
+
+        # df_test1 = add_features(df_test1)
+        # print(df_test1.head())
+        col=['datetime']
+        new_df_test2= df_test2.drop(columns=col)
+        df_for_testing1 = new_df_test2.astype(float)
+        # print(df_for_testing1)
+        # df_for_pred1=df_test1.drop(columns=['datetime'])
+        # df_test1=df_for_pred1.astype(float)
+        df_pred_scaled1=scaler.transform(df_for_testing1)
+
+        # print(df_pred_scaled1)
+        # print(df_test.sha)
+        X_pred1 = []
+        # for i in range(n_past, len(df_pred_scaled1) - n_future +1):
+
+        X_pred1.append(df_pred_scaled1[0:48, 0:df_for_testing1.shape[1]])
+
+
+        X_pred1= np.array(X_pred1)
+        # print(X_pred1)
+
+        print('X for prediction shape == {}.'.format(X_pred1.shape))
+        prediction1 = model.predict(X_pred1)
+        print(prediction1.shape)
+        prediction1_copies = np.repeat(prediction1, df_for_testing1.shape[1], axis=-1)
+        # print(prediction1_copies)
+        y_pred_future1 = scaler.inverse_transform(prediction1_copies)[:,0]
+        # print(y_pred_future1)
+        predicted_y.append(y_pred_future1)
+        dates.append(date)
+        data.loc[i+48,'nat_demand']=y_pred_future1
+
+
+
+    # print(predicted_y)
+    return predicted_y,dates
+
 
 
 
@@ -165,8 +240,8 @@ def getRoute():
     return "this is route 1"
 
 
-@app.route('/upload-csv', methods=['POST'])
-def upload_csv():
+@app.route('/get_short_term', methods=['POST'])
+def get_short_term():
     # Check if a file was uploaded
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in the request'}), 400
@@ -209,6 +284,54 @@ def upload_csv():
     except Exception as e:
         print(e)
         return make_response(str(e)+'sent proper CSV data', 404) 
+
+
+
+@app.route('/get_medium_term', methods=['POST'])
+def get_medium_term():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in the request'}), 400
+    
+    file = request.files['file']
+
+    # Check if the file has a name and is a valid CSV file
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    if not file.filename.endswith('.csv'):
+        return jsonify({'error': 'Uploaded file is not a CSV'}), 400
+    try:
+        # Read the CSV file into a list of dictionaries
+        
+        csv_file = io.StringIO(file.stream.read().decode("utf-8"))
+        # csv_reader = csv.DictReader(csv_file)
+        data= pd.read_csv(csv_file,encoding="latin-1")
+        # print(df_test)
+        model =load_model_MT()
+
+        y_predicted,dates=predicted_medium_term(data,model)
+
+        
+        # print((dates))
+        
+        pred = pd.Series(y_predicted).to_json(orient='values')
+    
+        
+        
+
+
+    
+
+        response= jsonify({'message': 'Data Fetched Succefully', "dates":dates,
+            "predicted_demand":pred
+            })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+    except Exception as e:
+        print(e)
+        return make_response(str(e)+'sent proper CSV data', 404) 
+
+
 
 
 if __name__=="__main__":
