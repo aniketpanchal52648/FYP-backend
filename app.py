@@ -153,7 +153,7 @@ def predicted_short_term(data,model):
        
         y_pred_future1 = scaler.inverse_transform(prediction1_copies)[:,0]
         # print(y_pred_future1)
-        predicted_y.append(y_pred_future1)
+        predicted_y.append(y_pred_future1[0])
         dates.append(date)
         data.loc[i+48,'nat_demand']=y_pred_future1
 
@@ -169,7 +169,7 @@ def predicted_medium_term(data,model):
     dates=[]
     previousData=[]
     time=[]
-    for i in range(24):
+    for i in range(30):
         df_test1=data.iloc[i:i+48]
         df_test1['datetime']=pd.to_datetime(df_test1['datetime'],format='%d-%m-%Y')
 
@@ -267,8 +267,10 @@ def get_short_term():
 
         
         # print((dates))
+        # print(y_predicted)
+        converted_prediction = [float(value) for value in y_predicted]
         
-        pred = pd.Series(y_predicted).to_json(orient='values')
+        # pred = pd.Series(y_predicted).to_json(orient='values')
     
         
         
@@ -277,7 +279,7 @@ def get_short_term():
     
 
         response= jsonify({'message': 'Data Fetched Succefully', "dates":dates,
-            "predicted_demand":pred
+            "predicted_demand":converted_prediction
             })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
