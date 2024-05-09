@@ -170,7 +170,7 @@ def predicted_medium_term(data,model):
     previousData=[]
     time=[]
     for i in range(30):
-        df_test1=data.iloc[i:i+48]
+        df_test1=data.iloc[i:i+24]
         df_test1['datetime']=pd.to_datetime(df_test1['datetime'],format='%d-%m-%Y')
 
         df_test1['week_day']=df_test1['datetime'].dt.dayofweek
@@ -178,12 +178,12 @@ def predicted_medium_term(data,model):
         df_test1['month']=df_test1['datetime'].dt.month
         # df_test1['hour']=df_test1['datetime'].dt.hour
         # df.head()
-        date=data.iloc[i+48,0]
+        date=data.iloc[i+24,0]
         date=pd.to_datetime(date,format='%d-%m-%Y')
         # time.append(date.dt.time)
 
 
-        previousData.append(data.iloc[i+48,1])
+        previousData.append(data.iloc[i+24,1])
         df_test2 = (df_test1)
 
         # df_test1 = add_features(df_test1)
@@ -201,7 +201,7 @@ def predicted_medium_term(data,model):
         X_pred1 = []
         # for i in range(n_past, len(df_pred_scaled1) - n_future +1):
 
-        X_pred1.append(df_pred_scaled1[0:48, 0:df_for_testing1.shape[1]])
+        X_pred1.append(df_pred_scaled1[0:24, 0:df_for_testing1.shape[1]])
 
 
         X_pred1= np.array(X_pred1)
@@ -214,9 +214,9 @@ def predicted_medium_term(data,model):
         # print(prediction1_copies)
         y_pred_future1 = scaler.inverse_transform(prediction1_copies)[:,0]
         # print(y_pred_future1)
-        predicted_y.append(y_pred_future1)
+        predicted_y.append(y_pred_future1[0])
         dates.append(date)
-        data.loc[i+48,'nat_demand']=y_pred_future1
+        data.loc[i+24,'nat_demand']=y_pred_future1
 
 
 
@@ -312,11 +312,12 @@ def get_medium_term():
         model =load_model_MT()
 
         y_predicted,dates=predicted_medium_term(data,model)
+        converted_prediction = [float(value) for value in y_predicted]
 
         
         # print((dates))
         
-        pred = pd.Series(y_predicted).to_json(orient='values')
+        # pred = pd.Series(y_predicted).to_json(orient='values')
     
         
         
@@ -325,7 +326,7 @@ def get_medium_term():
     
 
         response= jsonify({'message': 'Data Fetched Succefully', "dates":dates,
-            "predicted_demand":pred
+            "predicted_demand":converted_prediction
             })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
